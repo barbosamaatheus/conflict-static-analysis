@@ -14,6 +14,11 @@ public class Conflict {
     protected String sourceClassName;
     protected String sourceMethodName;
     protected Integer sourceLineNumber;
+
+    public Unit getSourceUnit() {
+        return sourceUnit;
+    }
+
     protected Unit sourceUnit;
     protected List<TraversedLine> sourceTraversedLine;
     protected String sinkClassName;

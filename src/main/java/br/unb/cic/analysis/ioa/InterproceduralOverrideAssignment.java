@@ -97,6 +97,11 @@ public class InterproceduralOverrideAssignment extends SceneTransformer implemen
                     entryPoints.add(s.getSootMethod());
                 }
             });
+            definition.getSinkStatements().forEach(s -> {
+                if (!entryPoints.contains(s.getSootMethod())) {
+                    entryPoints.add(s.getSootMethod());
+                }
+            });
         }
         Scene.v().setEntryPoints(entryPoints);
     }
@@ -165,8 +170,26 @@ public class InterproceduralOverrideAssignment extends SceneTransformer implemen
             }
         }
 
+        removeLocalVariablesFromMethod(in, sootMethod);
+        //removeLocalVariablesFromMethod(left, sootMethod);
+        //removeLocalVariablesFromMethod(right, sootMethod);
         this.traversedMethodsWrapper.remove(sootMethod);
         return in;
+    }
+
+    private void removeLocalVariablesFromMethod(FlowSet<DataFlowAbstraction> in, SootMethod sootMethod) {
+        Iterator<DataFlowAbstraction> iterator = in.iterator();
+        while (iterator.hasNext()) {
+            DataFlowAbstraction dataFlowAbstraction = iterator.next();
+            if (dataFlowAbstraction.getStmt().getSootMethod().equals(sootMethod)) {
+                dataFlowAbstraction.getStmt().getUnit().getDefBoxes().forEach(valueBox -> {
+                    if (valueBox.getValue() instanceof Local) {
+                        iterator.remove();
+                    }
+                });
+
+            }
+        }
     }
 
     private boolean shouldSkip(SootMethod sootMethod) {
@@ -343,6 +366,7 @@ public class InterproceduralOverrideAssignment extends SceneTransformer implemen
     // TODO add depth to InstanceFieldRef and StaticFieldRef...
     // TODO rename Statement. (UnitWithExtraInformations)
     private void gen(FlowSet<DataFlowAbstraction> in, Statement stmt) {
+        addStmtToList(stmt, in);
         if (stmt.isLefAndRightStatement()) {
             addConflict(stmt, stmt);
         } else if (stmt.isLeftStatement()) {
@@ -350,7 +374,7 @@ public class InterproceduralOverrideAssignment extends SceneTransformer implemen
         } else if (stmt.isRightStatement()) {
             checkConflict(stmt, left);
         }
-        addStmtToList(stmt, in);
+
     }
 
     private void addStmtToList(Statement stmt, FlowSet<DataFlowAbstraction> rightOrLeftList) {
@@ -360,18 +384,22 @@ public class InterproceduralOverrideAssignment extends SceneTransformer implemen
     /*
      * Checks if there is a conflict and if so adds it to the conflict list.
      */
-    private void checkConflict(Statement stmt, FlowSet<DataFlowAbstraction> rightOrLeftList) {
-        rightOrLeftList.forEach(dataFlowAbstraction -> stmt.getUnit().getDefBoxes().forEach(valueBox -> {
-            try {
-                if (containsValue(dataFlowAbstraction, valueBox.getValue())) {
-                    addConflict(stmt, dataFlowAbstraction.getStmt());
-                    rightOrLeftList.remove(dataFlowAbstraction);
+    private void checkConflict(Statement stmt, FlowSet<DataFlowAbstraction> in) {
+        FlowSet<DataFlowAbstraction> itemsToRemoved = new ArraySparseSet<>();
+        for (DataFlowAbstraction dataFlowAbstraction : in) {
+            for (ValueBox valueBox : stmt.getUnit().getDefBoxes()) {
+                try {
+                    if (containsValue(dataFlowAbstraction, valueBox.getValue())) {
+                        addConflict(stmt, dataFlowAbstraction.getStmt());
+                        itemsToRemoved.add(dataFlowAbstraction);
+                    }
+                } catch (ValueNotHandledException e) {
+                    assert false;
+                    e.printStackTrace();
                 }
-            } catch (ValueNotHandledException e) {
-                assert false;
-                e.printStackTrace();
             }
-        }));
+        }
+        itemsToRemoved.forEach(in::remove);
     }
 
     private void addConflict(Statement left, Statement right) {
@@ -379,29 +407,34 @@ public class InterproceduralOverrideAssignment extends SceneTransformer implemen
         if (this.conflicts.contains(conflict)) {
             return;
         }
+        for (Conflict conflict1 : conflicts) {
+            if (conflict1.getSourceUnit().equals(conflict.getSourceUnit())) {
+                return;
+            }
+        }
         this.conflicts.add(conflict);
 
     }
 
     private void kill(FlowSet<DataFlowAbstraction> in, Unit unit) {
-        unit.getDefBoxes().forEach(valueBox -> removeAll(valueBox, in));
-        unit.getDefBoxes().forEach(valueBox -> removeAll(valueBox, left));
-        unit.getDefBoxes().forEach(valueBox -> removeAll(valueBox, right));
+        unit.getDefBoxes().forEach(valueBox -> removeAll(valueBox.getValue(), in));
+        unit.getDefBoxes().forEach(valueBox -> removeAll(valueBox.getValue(), left));
+        unit.getDefBoxes().forEach(valueBox -> removeAll(valueBox.getValue(), right));
     }
 
-    private void removeAll(ValueBox valueBox, FlowSet<DataFlowAbstraction> rightOrLeftList) {
+    private void removeAll(Value value, FlowSet<DataFlowAbstraction> rightOrLeftList) {
         FlowSet<DataFlowAbstraction> itemsToRemoved = new ArraySparseSet<>();
         rightOrLeftList.forEach(dataFlowAbstraction -> {
             try {
-                if (containsValue(dataFlowAbstraction, valueBox.getValue())) {
+                if (containsValue(dataFlowAbstraction, value)) {
                     itemsToRemoved.add(dataFlowAbstraction);
                 }
             } catch (ValueNotHandledException e) {
                 e.printStackTrace();
             }
         });
-
-        rightOrLeftList.difference(itemsToRemoved);
+        itemsToRemoved.forEach(rightOrLeftList::remove);
+        //rightOrLeftList.difference(itemsToRemoved);
     }
 
     /**
@@ -412,7 +445,15 @@ public class InterproceduralOverrideAssignment extends SceneTransformer implemen
      * @return true if the variable exists in the abstraction and false if it does not.
      * @throws ValueNotHandledException Exception thrown when variable type is not cataloged.
      */
-    private boolean containsValue(DataFlowAbstraction dataFlowAbstraction, Value value) throws ValueNotHandledException {
+    private boolean containsValue(DataFlowAbstraction dataFlowAbstraction, Value value) throws
+            ValueNotHandledException {
+
+        if (dataFlowAbstraction.getValue().equals(value)) {
+            if (dataFlowAbstraction.getStmt().getSootMethod().isConstructor()) {
+                return false;
+            }
+            return true;
+        }
 
         if (dataFlowAbstraction.getValue() instanceof InstanceFieldRef && value instanceof InstanceFieldRef) {
             return compareInstanceFieldRef(dataFlowAbstraction, value);
@@ -436,9 +477,18 @@ public class InterproceduralOverrideAssignment extends SceneTransformer implemen
     }
 
     private boolean compareInstanceFieldRef(DataFlowAbstraction dataFlowAbstraction, Value value) {
+        PointsToAnalysis pointsToAnalysis = Scene.v().getPointsToAnalysis();
         InstanceFieldRef fromDataFlowAbstraction = (InstanceFieldRef) dataFlowAbstraction.getValue();
         InstanceFieldRef fromValue = (InstanceFieldRef) value;
-        return fromDataFlowAbstraction.toString().equals(fromValue.toString()) || (compareSignature(fromDataFlowAbstraction.getFieldRef(), fromValue.getFieldRef()) && comparePointsToHasNonEmptyIntersection((Local) fromDataFlowAbstraction.getBase(), (Local) fromValue.getBase()));
+
+        //o.x = poitsTo de O.
+        PointsToSet pointsToSetFromValue = pointsToAnalysis.reachingObjects((Local) fromValue.getBase());
+        PointsToSet pointsToSetfromDataFlowAbstraction = pointsToAnalysis.reachingObjects((Local) fromDataFlowAbstraction.getBase());
+
+        if (pointsToSetFromValue != null && !pointsToSetFromValue.isEmpty()) {
+            return pointsToSetFromValue.hasNonEmptyIntersection(pointsToSetfromDataFlowAbstraction) && fromDataFlowAbstraction.getField().equivHashCode() == fromValue.getField().equivHashCode();
+        }
+        return fromValue.getBase().getType().equals(fromDataFlowAbstraction.getBase().getType()) || fromDataFlowAbstraction.toString().equals(fromValue.toString()) || (compareSignature(fromDataFlowAbstraction.getFieldRef(), fromValue.getFieldRef()) && comparePointsToHasNonEmptyIntersection((Local) fromDataFlowAbstraction.getBase(), (Local) fromValue.getBase()));
     }
 
     /**
