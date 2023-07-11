@@ -1,7 +1,7 @@
 package br.unb.cic.analysis.samples.ioa;
 
 // Not Conflict - Not implemented yet. You will need constant propagation.
-// Currently detected as conflict: [left, m():9] --> [right, foo():14]
+// Currently detected as conflict: [left, m():11] --> [right, foo():17]
 public class ClassFieldWithParameterNotConflictSample {
     private int x;
 

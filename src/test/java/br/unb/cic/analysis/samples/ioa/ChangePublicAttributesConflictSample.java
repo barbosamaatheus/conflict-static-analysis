@@ -7,6 +7,7 @@ public class ChangePublicAttributesConflictSample {
         Result result = new Result(); // LEFT
 
         result.foo = 2;  // RIGHT
+        int i = 0;
         result.bar = 1;  // LEFT
     }
 }
