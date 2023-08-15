@@ -18,7 +18,6 @@ import soot.toolkits.scalar.FlowSet;
 import soot.util.Chain;
 
 import java.util.*;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -489,7 +488,14 @@ public class InterproceduralOverrideAssignment extends SceneTransformer implemen
         if (pointsToSetFromValue != null && !pointsToSetFromValue.isEmpty()) {
             return pointsToSetFromValue.hasNonEmptyIntersection(pointsToSetfromDataFlowAbstraction) && fromDataFlowAbstraction.getField().equivHashCode() == fromValue.getField().equivHashCode();
         }
-        return fromValue.getBase().getType().equals(fromDataFlowAbstraction.getBase().getType()) || fromDataFlowAbstraction.toString().equals(fromValue.toString()) || (compareSignature(fromDataFlowAbstraction.getFieldRef(), fromValue.getFieldRef()) && comparePointsToHasNonEmptyIntersection((Local) fromDataFlowAbstraction.getBase(), (Local) fromValue.getBase()));
+        return applyFieldComparation(fromDataFlowAbstraction, fromValue);
+    }
+
+    private boolean applyFieldComparation(InstanceFieldRef fromDataFlowAbstraction, InstanceFieldRef fromValue) {
+        return fromValue.getBase().getType().equals(fromDataFlowAbstraction.getBase().getType()) && fromValue.getField().getName().equals(fromDataFlowAbstraction.getField().getName())
+                || fromDataFlowAbstraction.toString().equals(fromValue.toString())
+                || (compareSignature(fromDataFlowAbstraction.getFieldRef(), fromValue.getFieldRef())
+                && comparePointsToHasNonEmptyIntersection((Local) fromDataFlowAbstraction.getBase(), (Local) fromValue.getBase()));
     }
 
     /**
