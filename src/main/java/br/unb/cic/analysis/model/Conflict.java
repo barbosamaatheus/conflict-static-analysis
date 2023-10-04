@@ -57,6 +57,14 @@ public class Conflict {
         return sourceClassName;
     }
 
+    public Unit getSourceUnit() {
+        return sourceUnit;
+    }
+
+    public Unit getSinkUnit() {
+        return sinkUnit;
+    }
+
     public String getSourceMethodName() {
         return sourceMethodName;
     }
@@ -81,16 +89,8 @@ public class Conflict {
         return sourceTraversedLine;
     }
 
-    public void setSourceTraversedLine(List<TraversedLine> sourceTraversedLine) {
-        this.sourceTraversedLine = sourceTraversedLine;
-    }
-
     public List<TraversedLine> getSinkTraversedLine() {
         return sinkTraversedLine;
-    }
-
-    public void setSinkTraversedLine(List<TraversedLine> sinkTraversedLine) {
-        this.sinkTraversedLine = sinkTraversedLine;
     }
 
     public boolean conflictsHaveSameSourceAndSinkRootTraversedLine(Conflict conflict) {
@@ -125,22 +125,6 @@ public class Conflict {
     public int hashCode() {
         return Objects.hash(sourceClassName, sourceMethodName, sourceLineNumber, sinkClassName, sinkMethodName, sinkLineNumber);
     }
-
-
-    public String toStringAbstract() {
-        if (!sourceTraversedLine.isEmpty() && !sinkTraversedLine.isEmpty()) {
-            return String.format("source(%s, %s, %d, %s, %s) => sink(%s, %s, %d, %s, %s)", sourceTraversedLine.get(0).getSootClass(),
-                    sourceTraversedLine.get(0).getSootMethod(), sourceTraversedLine.get(0).getLineNumber(), sourceUnit,
-                    sourceTraversedLine,
-                    sinkTraversedLine.get(0).getSootClass(), sinkTraversedLine.get(0).getSootMethod(),
-                    sinkTraversedLine.get(0).getLineNumber(), sinkUnit, sinkTraversedLine);
-        }
-        return String.format("source(%s, %s) => sink(%s, %s)", sourceUnit,
-                sourceTraversedLine,
-                sinkUnit, sinkTraversedLine);
-
-    }
-
 
     @Override
     public String toString() {
