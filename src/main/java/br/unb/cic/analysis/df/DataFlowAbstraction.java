@@ -2,6 +2,7 @@ package br.unb.cic.analysis.df;
 
 import br.unb.cic.analysis.model.Statement;
 import soot.Local;
+import soot.PointsToSet;
 import soot.Value;
 import soot.jimple.InstanceFieldRef;
 import soot.jimple.InvokeStmt;
@@ -21,6 +22,7 @@ public class DataFlowAbstraction {
     private InvokeStmt methodCall;
     private Statement stmt;
     private Value value;
+    private PointsToSet points;
 
     public DataFlowAbstraction(InvokeStmt methodCall, Statement stmt){
         this.methodCall = methodCall;
@@ -74,15 +76,24 @@ public class DataFlowAbstraction {
     public InstanceFieldRef getFieldRef() {
         return localField;
     }
+
     public Statement getStmt() {
         return stmt;
     }
 
-    public Boolean containsLeftStatement(){
+    public PointsToSet getPoints() {
+        return points;
+    }
+
+    public void setPoints(PointsToSet points) {
+        this.points = points;
+    }
+
+    public Boolean containsLeftStatement() {
         return getStmt().getType().equals(Statement.Type.SOURCE);
     }
 
-    public Boolean containsRightStatement(){
+    public Boolean containsRightStatement() {
         return getStmt().getType().equals(Statement.Type.SINK);
     }
 

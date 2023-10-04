@@ -4,6 +4,7 @@ import br.unb.cic.analysis.AbstractAnalysis;
 import br.unb.cic.analysis.AbstractMergeConflictDefinition;
 import br.unb.cic.analysis.df.DataFlowAbstraction;
 import br.unb.cic.analysis.model.Conflict;
+import br.unb.cic.analysis.model.OAConflictReport;
 import br.unb.cic.analysis.model.Statement;
 import br.unb.cic.analysis.model.TraversedLine;
 import br.unb.cic.exceptions.ValueNotHandledException;
@@ -18,7 +19,6 @@ import soot.toolkits.scalar.FlowSet;
 import soot.util.Chain;
 
 import java.util.*;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 // TODO Add treatment of if, loops ... (ForwardFlowAnalysis)
@@ -27,13 +27,13 @@ public class InterproceduralOverrideAssignment extends SceneTransformer implemen
 
     private final int depthLimit;
     private final AbstractMergeConflictDefinition definition;
-    private Set<Conflict> conflicts;
     private TraversedMethodsWrapper<SootMethod> traversedMethodsWrapper;
     private int visitedMethods = 0;
     private FlowSet<DataFlowAbstraction> left;
     private FlowSet<DataFlowAbstraction> right;
     private List<TraversedLine> stacktraceList;
-    private Logger logger;
+    private OAConflictReport oaConflictReport;
+
 
     public InterproceduralOverrideAssignment(AbstractMergeConflictDefinition definition) {
         this.definition = definition;
@@ -50,22 +50,21 @@ public class InterproceduralOverrideAssignment extends SceneTransformer implemen
     }
 
     private void initDefaultFields() {
-        this.conflicts = new HashSet<>();
         this.left = new ArraySparseSet<>();
         this.right = new ArraySparseSet<>();
         this.traversedMethodsWrapper = new TraversedMethodsWrapper<>();
         this.stacktraceList = new ArrayList<>();
-        this.logger = Logger.getLogger(InterproceduralOverrideAssignment.class.getName());
-    }
+        this.oaConflictReport = new OAConflictReport();
 
+    }
     @Override
     public void clear() {
-        conflicts.clear();
+        oaConflictReport.clear();
     }
 
     @Override
     public Set<Conflict> getConflicts() {
-        return conflicts;
+        return oaConflictReport.getConflicts();
     }
 
     @Override
@@ -76,7 +75,7 @@ public class InterproceduralOverrideAssignment extends SceneTransformer implemen
         methods.forEach(sootMethod -> traverse(new ArraySparseSet<>(), sootMethod, Statement.Type.IN_BETWEEN));
         long finalTime = System.currentTimeMillis();
         System.out.println("Runtime: " + ((finalTime - startTime) / 1000d) + "s");
-        System.out.println(String.format("%s", "CONFLICTS: " + filterConflictsWithSameRoot(getConflicts())));
+        oaConflictReport.report();
     }
 
     public void configureEntryPoints() {
@@ -378,7 +377,21 @@ public class InterproceduralOverrideAssignment extends SceneTransformer implemen
     }
 
     private void addStmtToList(Statement stmt, FlowSet<DataFlowAbstraction> rightOrLeftList) {
-        stmt.getUnit().getDefBoxes().forEach(valueBox -> rightOrLeftList.add(new DataFlowAbstraction(valueBox.getValue(), stmt)));
+        stmt.getUnit().getUseAndDefBoxes().forEach(valueBox -> {
+            PointsToAnalysis pointsToAnalysis = Scene.v().getPointsToAnalysis();
+            DataFlowAbstraction dataFlowAbstraction = new DataFlowAbstraction(valueBox.getValue(), stmt);
+            if (valueBox.getValue() instanceof InstanceFieldRef) {
+                Local base = (Local) ((InstanceFieldRef) valueBox.getValue()).getBase();
+                SootField field = ((InstanceFieldRef) valueBox.getValue()).getField();
+                PointsToSet points = pointsToAnalysis.reachingObjects(base, field);
+                dataFlowAbstraction.setPoints(points);
+            } else if (valueBox.getValue() instanceof Local) {
+                PointsToSet points = pointsToAnalysis.reachingObjects((Local) valueBox.getValue());
+                dataFlowAbstraction.setPoints(points);
+            }
+
+            rightOrLeftList.add(dataFlowAbstraction);
+        });
     }
 
     /*
@@ -404,15 +417,10 @@ public class InterproceduralOverrideAssignment extends SceneTransformer implemen
 
     private void addConflict(Statement left, Statement right) {
         Conflict conflict = new Conflict(left, right);
-        if (this.conflicts.contains(conflict)) {
+        if (this.oaConflictReport.contains(conflict)) {
             return;
         }
-        for (Conflict conflict1 : conflicts) {
-            if (conflict1.getSourceUnit().equals(conflict.getSourceUnit())) {
-                return;
-            }
-        }
-        this.conflicts.add(conflict);
+        this.oaConflictReport.addConflict(conflict);
 
     }
 
@@ -469,6 +477,21 @@ public class InterproceduralOverrideAssignment extends SceneTransformer implemen
             StaticFieldRef fromValue = (StaticFieldRef) value;
             return compareSignature(fromDataFlowAbstraction.getFieldRef(), fromValue.getFieldRef());
         }
+
+        /**
+         * For cases of type LEFT: c = d.z and RIGHT: c.y
+         */
+        if (dataFlowAbstraction.getValue() instanceof Local
+                && dataFlowAbstraction.getStmt().getUnit().getUseBoxes().get(0).getValue() instanceof InstanceFieldRef
+                && value instanceof InstanceFieldRef) {
+            PointsToAnalysis pointsToAnalysis = Scene.v().getPointsToAnalysis();
+
+            PointsToSet pointsToSetFromValue = pointsToAnalysis
+                    .reachingObjects((Local) ((InstanceFieldRef) value).getBase());
+            PointsToSet pointsToSetfromDataFlowAbstraction = dataFlowAbstraction.getPoints();
+
+            return pointsToSetFromValue.hasNonEmptyIntersection(pointsToSetfromDataFlowAbstraction);
+        }
         if (!dataFlowAbstraction.getValue().getClass().equals(value.getClass())) {
             return false;
         }
@@ -483,10 +506,20 @@ public class InterproceduralOverrideAssignment extends SceneTransformer implemen
 
         //o.x = poitsTo de O.
         PointsToSet pointsToSetFromValue = pointsToAnalysis.reachingObjects((Local) fromValue.getBase());
-        PointsToSet pointsToSetfromDataFlowAbstraction = pointsToAnalysis.reachingObjects((Local) fromDataFlowAbstraction.getBase());
+        PointsToSet pointsToSetfromDataFlowAbstraction = dataFlowAbstraction.getPoints();
+
+        if (pointsToSetfromDataFlowAbstraction.isEmpty()) {
+            pointsToSetfromDataFlowAbstraction = pointsToAnalysis.reachingObjects((Local) fromDataFlowAbstraction.getBase());
+        }
+
+        /*if (fromValue.getBase().toString().contains("$stack")|| pointsToSetFromValue.isEmpty() && this.abs.get(fromValue.getBase()) instanceof  InstanceFieldRef){
+            fromValue = (InstanceFieldRef) this.abs.get(fromValue.getBase());
+            pointsToSetFromValue = pointsToAnalysis.reachingObjects((Local) fromValue.getBase());
+        }*/
 
         if (pointsToSetFromValue != null && !pointsToSetFromValue.isEmpty()) {
-            return pointsToSetFromValue.hasNonEmptyIntersection(pointsToSetfromDataFlowAbstraction) && fromDataFlowAbstraction.getField().equivHashCode() == fromValue.getField().equivHashCode();
+            return pointsToSetFromValue.hasNonEmptyIntersection(pointsToSetfromDataFlowAbstraction);
+            // && fromDataFlowAbstraction.getField().equivHashCode() == fromValue.getField().equivHashCode();
         }
         return applyFieldComparation(fromDataFlowAbstraction, fromValue);
     }
@@ -582,7 +615,7 @@ public class InterproceduralOverrideAssignment extends SceneTransformer implemen
         return definition.getSourceStatements().stream().filter(s -> s.getUnit().equals(u)).findFirst().get();
     }
 
-    public int getVisitedMethods(){
+    public int getVisitedMethods() {
         return this.visitedMethods;
     }
 }
