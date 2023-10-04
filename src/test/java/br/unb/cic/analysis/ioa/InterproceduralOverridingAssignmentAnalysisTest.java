@@ -392,7 +392,7 @@ public class InterproceduralOverridingAssignmentAnalysisTest {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        Assert.assertEquals(134, analysis.getConflicts().size());
+        Assert.assertEquals(131, analysis.getConflicts().size());
     }
 
     @Test
@@ -413,7 +413,7 @@ public class InterproceduralOverridingAssignmentAnalysisTest {
                 .definition(sampleClassPath, new int[]{7, 11}, new int[]{9});
         InterproceduralOverrideAssignment analysis = new InterproceduralOverrideAssignment(definition);
         configureTest(analysis);
-        Assert.assertEquals(1, analysis.getConflicts().size());
+        Assert.assertEquals(2, analysis.getConflicts().size());
     }
 
     @Test
@@ -843,6 +843,56 @@ public class InterproceduralOverridingAssignmentAnalysisTest {
         InterproceduralOverrideAssignment analysis = new InterproceduralOverrideAssignment(definition);
         configureTest(analysis);
         Assert.assertEquals(1, analysis.getConflicts().size());
+    }
+
+    @Test
+    public void changeObjectPropagatinsField7() {
+        String sampleClassPath = "br.unb.cic.analysis.samples.ioa.ChangeObjectPropagatinsFieldSample7";
+        AbstractMergeConflictDefinition definition = DefinitionFactory
+                .definition(sampleClassPath, new int[]{9, 10}, new int[]{12});
+        InterproceduralOverrideAssignment analysis = new InterproceduralOverrideAssignment(definition);
+        configureTest(analysis);
+        Assert.assertEquals(1, analysis.getConflicts().size());
+    }
+
+    @Test
+    public void changeObjectPropagatinsField8() {
+        String sampleClassPath = "br.unb.cic.analysis.samples.ioa.ChangeObjectPropagatinsFieldSample8";
+        AbstractMergeConflictDefinition definition = DefinitionFactory
+                .definition(sampleClassPath, new int[]{9}, new int[]{11});
+        InterproceduralOverrideAssignment analysis = new InterproceduralOverrideAssignment(definition);
+        configureTest(analysis);
+        Assert.assertEquals(0, analysis.getConflicts().size());
+    }
+
+    @Test
+    public void changeObjectPropagatinsField9() {
+        String sampleClassPath = "br.unb.cic.analysis.samples.ioa.ChangeObjectPropagatinsFieldSample9";
+        AbstractMergeConflictDefinition definition = DefinitionFactory
+                .definition(sampleClassPath, new int[]{9}, new int[]{11});
+        InterproceduralOverrideAssignment analysis = new InterproceduralOverrideAssignment(definition);
+        configureTest(analysis);
+        Assert.assertEquals(0, analysis.getConflicts().size());
+    }
+
+    @Test
+    public void changeObjectPropagatinsField10() {
+        String sampleClassPath = "br.unb.cic.analysis.samples.ioa.ChangeObjectPropagatinsFieldSample10";
+        AbstractMergeConflictDefinition definition = DefinitionFactory
+                .definition(sampleClassPath, new int[]{9}, new int[]{11});
+        InterproceduralOverrideAssignment analysis = new InterproceduralOverrideAssignment(definition);
+        configureTest(analysis);
+        Assert.assertEquals(1, analysis.getConflicts().size());
+    }
+
+    @Test
+    public void changeObjectPropagatinsField11() {
+        String sampleClassPath = "br.unb.cic.analysis.samples.ioa.ChangeObjectPropagatinsFieldSample11";
+        AbstractMergeConflictDefinition definition = DefinitionFactory
+                .definition(sampleClassPath, new int[]{10}, new int[]{12});
+        InterproceduralOverrideAssignment analysis = new InterproceduralOverrideAssignment(definition);
+        configureTest(analysis);
+        Assert.assertEquals(7, analysis.getConflicts().size());
     }
 
     @Test
