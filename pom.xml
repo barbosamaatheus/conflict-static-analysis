@@ -8,14 +8,14 @@
 
 	<repositories>
 		<repository>
-			<id>spgroup</id>
+			<id>soot</id>
 			<name>SPG Maven Repository (fork of the soot project)</name>
 			<url>https://maven.pkg.github.com/spgroup/soot/</url>
 		</repository>
 		<repository>
-			<id>rbonifacio</id>
+			<id>svfa-scala</id>
 			<name>Temporary repository for the SVFA library</name>
-			<url>https://maven.pkg.github.com/rbonifacio/svfa-scala/</url>
+			<url>https://maven.pkg.github.com/spgroup/svfa-scala/</url>
 		</repository>
 	</repositories>
 
@@ -41,7 +41,7 @@
 		<dependency>
 			<groupId>br.unb.cic</groupId>
 			<artifactId>svfa-scala_2.12</artifactId>
-			<version>0.5.9</version>
+			<version>0.5.10</version>
 		</dependency>
 
 		<dependency>
