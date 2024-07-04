@@ -140,3 +140,7 @@ mvn exec:java -Dexec.mainClass="br.unb.cic.analysis.Main" \
 -Dexec.args="-repo /path/of/project -commit <hash-of-merge-commit> -cp /path/of/class/files/folder"
 ```
 
+#### -entrypoints
+
+List of entry points to be used in the analysis.
+E.g.: `[org.example.Main:void main(java.lang.String[])]`
