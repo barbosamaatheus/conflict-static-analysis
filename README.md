@@ -142,5 +142,12 @@ mvn exec:java -Dexec.mainClass="br.unb.cic.analysis.Main" \
 
 #### -entrypoints
 
-List of entry points to be used in the analysis.
+Comma-separated list of entry points to be used in analysis.
+
+This attribute is optional. If it is not sent, the analysis will look for the method that was changed by two developers
+at the same time, and will use it as an entry point.
+
+This attribute only works in the analysis
+of `OA inter and intra`, `DF inter and intra`, `DFP inter and intra`,` Confluence inter and intra`, `CD` and `PDG`.
+
 E.g.: `[org.example.Main:void main(java.lang.String[])]`
