@@ -59,16 +59,6 @@ Create a file called settings.xml in /home/.m2 and insert your GIT_HUB_USER and 
         <repository>
           <id>svfa</id>
           <name>svfa repository</name>
-          <url>https://maven.pkg.github.com/galilasmb/svfa-scala</url>
-        </repository>
-         <repository>
-          <id>svfa</id>
-          <name>svfa repository</name>
-          <url>https://maven.pkg.github.com/barbosamaatheus/svfa-scala</url>
-        </repository>
-        <repository>
-          <id>svfa</id>
-          <name>svfa repository</name>
           <url>https://maven.pkg.github.com/spgroup/svfa-scala</url>
         </repository>
 
