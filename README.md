@@ -69,13 +69,13 @@ Create a file called settings.xml in /home/.m2 and insert your GIT_HUB_USER and 
   <servers>
     <server>
       <id>spg</id>
-      <username>GIT_HUB_USER</username>
-      <password>GIT_HUB_TOKEN</password>
+        <username>GIT_HUB_USER</username>
+        <password>GIT_HUB_TOKEN</password>
     </server>
      <server>
       <id>svfa</id>
-      <username>GIT_HUB_USER</username>
-      <password>GIT_HUB_TOKEN</password>
+        <username>GIT_HUB_USER</username>
+        <password>GIT_HUB_TOKEN</password>
     </server>
   </servers>
 </settings>
@@ -140,3 +140,14 @@ mvn exec:java -Dexec.mainClass="br.unb.cic.analysis.Main" \
 -Dexec.args="-repo /path/of/project -commit <hash-of-merge-commit> -cp /path/of/class/files/folder"
 ```
 
+#### -entrypoints
+
+Comma-separated list of entry points to be used in analysis.
+
+This attribute is optional. If it is not sent, the analysis will look for the method that was changed by two developers
+at the same time, and will use it as an entry point.
+
+This attribute only works in the analysis
+of `OA inter and intra`, `DF inter and intra`, `DFP inter and intra`,` Confluence inter and intra`, `CD` and `PDG`.
+
+E.g.: `[org.example.Main:void main(java.lang.String[])]`
