@@ -77,3 +77,4 @@ jobs:
 
       - name: Build with Maven
         run: mvn -B test --file pom.xml
+        continue-on-error: false
