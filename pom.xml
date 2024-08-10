@@ -109,7 +109,6 @@
 						<releaseBranchPrefix>release/</releaseBranchPrefix>
 						<hotfixBranchPrefix>hotfix/</hotfixBranchPrefix>
 						<supportBranchPrefix>support/</supportBranchPrefix>
-						<versionTagPrefix></versionTagPrefix>
 						<origin>origin</origin>
 					</gitFlowConfig>
 				</configuration>
