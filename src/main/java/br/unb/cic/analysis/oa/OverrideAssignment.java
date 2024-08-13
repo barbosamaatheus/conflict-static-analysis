@@ -16,14 +16,17 @@ import soot.util.Chain;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class OverrideAssignment extends SceneTransformer implements AbstractAnalysis {
+public abstract class OverrideAssignment extends SceneTransformer implements AbstractAnalysis {
     private int depthLimit;
     private final Boolean interprocedural;
     private OAConflictReport oaConflictReport;
     private TraversedMethodsWrapper<SootMethod> traversedMethodsWrapper;
     private List<TraversedLine> stacktraceList;
-
     private StatementsUtil statementsUtils;
+
+    protected abstract void gen(OverrideAssignmentAbstraction in, Statement stmt);
+
+    protected abstract boolean isSameStateElement(Statement stmtInAbs, Statement stmtInFlow);
 
     public OverrideAssignment(AbstractMergeConflictDefinition definition, int depthLimit, Boolean interprocedural, List<String> entrypoints) {
         this.depthLimit = depthLimit;
@@ -224,33 +227,7 @@ public class OverrideAssignment extends SceneTransformer implements AbstractAnal
         statementsToRemove.forEach(statement -> kill(in, statement));
     }
 
-    private boolean isSameStateElement(Statement stmtInAbs, Statement stmtInFlow) {
-        for (ValueBox defBoxInAbs : stmtInAbs.getUnit().getDefBoxes()) {
-            for (ValueBox defBoxInFlow : stmtInFlow.getUnit().getDefBoxes()) {
-                Value valueInAbs = defBoxInAbs.getValue();
-                Value valueInFlow = defBoxInFlow.getValue();
-
-                if (valueInAbs instanceof Local && valueInFlow instanceof Local) {
-                    return isSameLocal(stmtInAbs, stmtInFlow, valueInAbs, valueInFlow);
-                } else if (valueInAbs instanceof InstanceFieldRef && valueInFlow instanceof InstanceFieldRef) {
-                    return isSameFieldRef(stmtInAbs, stmtInFlow, valueInAbs, valueInFlow);
-                } else if (valueInAbs instanceof ArrayRef && valueInFlow instanceof ArrayRef) {
-                    return isSameArrayRef(stmtInAbs, stmtInFlow, valueInAbs, valueInFlow);
-                } else if (valueInAbs instanceof StaticFieldRef && valueInFlow instanceof StaticFieldRef) {
-                    return isSameStaticFieldRef(valueInAbs, valueInFlow);
-                } else if (valueInAbs instanceof ArrayRef && valueInFlow instanceof Local) {
-                    if (!stmtInAbs.getSootMethod().equals(stmtInFlow.getSootMethod())) {
-                        return false;
-                    }
-                    return valueInAbs.toString().contains(valueInFlow.toString());
-                }
-
-            }
-        }
-        return false;
-    }
-
-    private boolean isSameLocal(Statement stmtInAbs, Statement stmtInFlow, Value valueInAbs, Value valueInFlow) {
+    protected boolean isSameLocal(Statement stmtInAbs, Statement stmtInFlow, Value valueInAbs, Value valueInFlow) {
         // Se as variaveis são locais, devem ser do mesmo metodo, se forem de metodos diferentes, não há interferencia.
         if (!stmtInAbs.getSootMethod().equals(stmtInFlow.getSootMethod())) {
             return false;
@@ -258,7 +235,7 @@ public class OverrideAssignment extends SceneTransformer implements AbstractAnal
         return valueInAbs.toString().equals(valueInFlow.toString());
     }
 
-    private boolean isSameFieldRef(Statement stmtInAbs, Statement stmtInFlow, Value valueInAbs, Value valueInFlow) {
+    protected boolean isSameFieldRef(Statement stmtInAbs, Statement stmtInFlow, Value valueInAbs, Value valueInFlow) {
         InstanceFieldRef abstractFieldRef = (InstanceFieldRef) valueInAbs;
         InstanceFieldRef flowFieldRef = (InstanceFieldRef) valueInFlow;
 
@@ -269,7 +246,6 @@ public class OverrideAssignment extends SceneTransformer implements AbstractAnal
                 && areFieldReferencesEqual(stmtInAbs, stmtInFlow, abstractFieldRef, flowFieldRef);
     }
 
-
     private static boolean areFieldReferencesEqual(Statement stmtInAbs, Statement stmtInFlow, InstanceFieldRef abstractFieldRef, InstanceFieldRef flowFieldRef) {
         boolean pointToIntersection = stmtInAbs.getPointsTo().hasNonEmptyIntersection(stmtInFlow.getPointsTo());
         boolean typesEqual = abstractFieldRef.getType().equals(flowFieldRef.getType());
@@ -278,8 +254,7 @@ public class OverrideAssignment extends SceneTransformer implements AbstractAnal
         return (pointToIntersection || typesEqual) && fieldRefsEqual;
     }
 
-
-    private boolean isSameArrayRef(Statement stmtInAbs, Statement stmtInFlow, Value valueInAbs, Value valueInFlow) {
+    protected boolean isSameArrayRef(Statement stmtInAbs, Statement stmtInFlow, Value valueInAbs, Value valueInFlow) {
         if (stmtInAbs.getPointsTo() != null) {
             if (stmtInFlow.getPointsTo() == null) {
                 getPointToFromBase(((ArrayRef) valueInFlow).getBase(), stmtInFlow);
@@ -292,7 +267,7 @@ public class OverrideAssignment extends SceneTransformer implements AbstractAnal
         return false;
     }
 
-    private boolean isSameStaticFieldRef(Value valueInAbs, Value valueInFlow) {
+    protected boolean isSameStaticFieldRef(Value valueInAbs, Value valueInFlow) {
         return ((StaticFieldRef) valueInAbs).getFieldRef().getSignature().equals(((StaticFieldRef) valueInFlow).getFieldRef().getSignature());
     }
 
@@ -304,26 +279,13 @@ public class OverrideAssignment extends SceneTransformer implements AbstractAnal
         }
     }
 
-
-    private void gen(OverrideAssignmentAbstraction in, Statement stmt) {
-        Value value = stmt.getUnit().getDefBoxes().get(0).getValue();
-        if (value instanceof InstanceFieldRef) {
-            getPointToFromBase(((InstanceFieldRef) value).getBase(), stmt);
-        } else if (value instanceof ArrayRef) {
-            getPointToFromBase(((ArrayRef) value).getBase(), stmt);
-        } else if (value instanceof StaticFieldRef) {
-            getPointToFromStaticField(((StaticFieldRef) value).getField(), stmt);
-        }
-        in.add(stmt);
-    }
-
-    private static void getPointToFromBase(Value value, Statement stmt) {
+    protected static void getPointToFromBase(Value value, Statement stmt) {
         PointsToAnalysis pointsToAnalysis = Scene.v().getPointsToAnalysis();
         PointsToSet points = pointsToAnalysis.reachingObjects((Local) value);
         stmt.setPointsTo(points);
     }
 
-    private static void getPointToFromStaticField(SootField fieldRef, Statement stmt) {
+    protected static void getPointToFromStaticField(SootField fieldRef, Statement stmt) {
         PointsToAnalysis pointsToAnalysis = Scene.v().getPointsToAnalysis();
         PointsToSet points = pointsToAnalysis.reachingObjects(fieldRef);
         stmt.setPointsTo(points);
