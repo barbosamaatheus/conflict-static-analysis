@@ -15,6 +15,8 @@ import br.unb.cic.analysis.io.MergeConflictReader;
 import br.unb.cic.analysis.model.Conflict;
 import br.unb.cic.analysis.model.Statement;
 import br.unb.cic.analysis.oa.OverrideAssignment;
+import br.unb.cic.analysis.oa.OverrideAssignmentWithPointerAnalysis;
+import br.unb.cic.analysis.oa.OverrideAssignmentWithoutPointerAnalysis;
 import br.unb.cic.analysis.pdg.PDGAnalysisSemanticConflicts;
 import br.unb.cic.analysis.pdg.PDGIntraProcedural;
 import br.unb.cic.analysis.reachability.ReachabilityAnalysis;
@@ -153,7 +155,6 @@ public class Main {
         Option analysisOption = Option.builder("mode").argName("mode")
                 .hasArg().desc("analysis mode [data-flow, tainted, reachability, svfa-{interprocedural | intraprocedural}" +
                         ", svfa-confluence-{interprocedural | intraprocedural}, pessimistic-dataflow]")
-
                 .build();
 
         Option repoOption = Option.builder("repo").argName("repo")
@@ -182,6 +183,9 @@ public class Main {
         Option entrypointsOption = Option.builder("entrypoints").argName("entrypoints").hasArg()
                 .desc("entrypoints")
                 .build();
+        Option oaPointerAnalysisOption = Option.builder("oaPointerAnalysis").argName("oaPointerAnalysis").hasArg()
+                .desc("enable pointer analysis in overloading assignment")
+                .build();
 
         options.addOption(classPathOption);
         options.addOption(inputFileOption);
@@ -193,6 +197,7 @@ public class Main {
         options.addOption(depthLimitOption);
         options.addOption(depthMethodsVisitedSVFAOption);
         options.addOption(entrypointsOption);
+        options.addOption(oaPointerAnalysisOption);
     }
 
     private void runAnalysis(String mode, String classpath) {
@@ -312,13 +317,14 @@ public class Main {
 
     private void runOverrideAssignmentAnalysis(String classpath, Boolean interprocedural) {
         int depthLimit = Integer.parseInt(cmd.getOptionValue("depthLimit", "5"));
-
+        boolean oaPointerAnalysis = Boolean.parseBoolean(cmd.getOptionValue("oaPointerAnalysis", "true"));
         List<String> entrypoints = convertStringEntrypointsToList(cmd.getOptionValue("entrypoints"));
 
         stopwatch = Stopwatch.createStarted();
 
-        OverrideAssignment overrideAssignment =
-                new OverrideAssignment(definition, depthLimit, interprocedural, entrypoints);
+        OverrideAssignment overrideAssignment = oaPointerAnalysis
+                ? new OverrideAssignmentWithPointerAnalysis(definition, depthLimit, interprocedural, entrypoints)
+                : new OverrideAssignmentWithoutPointerAnalysis(definition, depthLimit, interprocedural, entrypoints);
 
         SootWrapper.configureSootOptionsToRunInterproceduralOverrideAssignmentAnalysis(classpath);
 
@@ -343,7 +349,6 @@ public class Main {
         saveConflictsLog("OA " + (interprocedural ? "Inter" : "Intra"), conflicts.toString());
 
     }
-
 
     /*
      * After discussing this algorithm with the researchers at
