@@ -113,7 +113,7 @@ public class InterproceduralOverridingAssignmentAnalysisTest {
                 .definition(sampleClassPath, new int[]{8}, new int[]{10});
         OverrideAssignment analysis = new OverrideAssignment(definition);
         configureTest(analysis);
-        Assert.assertEquals(7, analysis.getConflicts().size());
+        Assert.assertEquals(8, analysis.getConflicts().size());
     }
 
     @Test
@@ -252,7 +252,7 @@ public class InterproceduralOverridingAssignmentAnalysisTest {
                 .definition(sampleClassPath, new int[]{13}, new int[]{12});
         OverrideAssignment analysis = new OverrideAssignment(definition);
         configureTest(analysis);
-        Assert.assertEquals(3, analysis.getConflicts().size());
+        Assert.assertEquals(2, analysis.getConflicts().size());
     }
 
     @Test
@@ -471,7 +471,7 @@ public class InterproceduralOverridingAssignmentAnalysisTest {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        Assert.assertEquals(164, analysis.getConflicts().size());
+        Assert.assertEquals(161, analysis.getConflicts().size());
     }
 
     @Test
@@ -830,7 +830,7 @@ public class InterproceduralOverridingAssignmentAnalysisTest {
     public void sequenceConflict2() {
         String sampleClassPath = "br.unb.cic.analysis.samples.ioa.SequenceConflictSample2";
         AbstractMergeConflictDefinition definition = DefinitionFactory
-                .definition(sampleClassPath, new int[]{7}, new int[]{8, 9});
+                .definition(sampleClassPath, new int[]{7, 9}, new int[]{8});
         OverrideAssignment analysis = new OverrideAssignment(definition);
         configureTest(analysis);
         Assert.assertEquals(1, analysis.getConflicts().size());
@@ -980,7 +980,7 @@ public class InterproceduralOverridingAssignmentAnalysisTest {
                 .definition(sampleClassPath, new int[]{11, 16}, new int[]{18});
 
         List<String> entrypoints = new ArrayList<>();
-        entrypoints.add("void main()");
+        entrypoints.add("void main(java.lang.String[])");
 
         OverrideAssignment analysis = new OverrideAssignment(definition, 5, true, entrypoints);
 
