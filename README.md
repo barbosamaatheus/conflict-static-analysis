@@ -151,3 +151,8 @@ This attribute only works in the analysis
 of `OA inter and intra`, `DF inter and intra`, `DFP inter and intra`,` Confluence inter and intra`, `CD` and `PDG`.
 
 E.g.: `[org.example.Main:void main(java.lang.String[])]`
+
+#### -oaPointerAnalysis
+
+Enable pointer analysis in overloading assignment.
+Default value is true
