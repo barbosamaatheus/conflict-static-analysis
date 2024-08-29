@@ -46,6 +46,10 @@ public class SootWrapper {
     }
 
     public static void configureSootOptionsToRunInterproceduralOverrideAssignmentAnalysis(String classpath) {
+        configureSootOptionsToRunInterproceduralOverrideAssignmentAnalysis(classpath, true);
+    }
+
+    public static void configureSootOptionsToRunInterproceduralOverrideAssignmentAnalysis(String classpath, boolean usePointsToAnalysis) {
         List<String> classes = Collections.singletonList(classpath);
 
         Options.v().set_no_bodies_for_excluded(true);
@@ -66,19 +70,20 @@ public class SootWrapper {
         else if (getJavaVersion() >= 9) {
             Options.v().set_soot_classpath("VIRTUAL_FS_FOR_JDK" + File.pathSeparator + classpath);
         }
-
-        //Options.v().setPhaseOption("cg.spark", "on");
-        //Options.v().setPhaseOption("cg.spark", "verbose:true");
-        Options.v().setPhaseOption("cg.spark", "enabled:true");
+        Options.v().setPhaseOption("jb.ls", "off"); // remove x = 1; x#2 = 2
         Options.v().setPhaseOption("jb", "use-original-names:true");
 
-        Scene.v().loadNecessaryClasses();
-
-        enableSparkCallGraph();
+        enableCallGraph(usePointsToAnalysis);
         //enableCHACallGraph();
+
+        Scene.v().loadNecessaryClasses();
     }
 
-    public static void enableSparkCallGraph() {
+    public static void enableCallGraph() {
+        enableCallGraph(true);
+    }
+
+    public static void enableCallGraph(boolean usePointsToAnalysis) {
         //Enable Spark
         HashMap<String, String> opt = new HashMap<String, String>();
         //opt.put("propagator","worklist");
@@ -89,7 +94,19 @@ public class SootWrapper {
         //opt.put("double-set-new","hybrid");
         //opt.put("pre_jimplify", "true");
         SparkTransformer.v().transform("", opt);
-        soot.options.Options.v().setPhaseOption("cg.spark", "enable:true");
+
+        if (usePointsToAnalysis) {
+            // Configurações para análise de points-to precisa
+            Options.v().setPhaseOption("cg.spark", "on"); // Ativa o Spark
+            Options.v().setPhaseOption("cg.spark", "enabled:true"); // Habilita o Spark
+        } else {
+            // Configurações para análise conservadora (CHA)
+            //Options.v().setPhaseOption("cg.spark", "on"); // Ativa o Spark
+            Options.v().setPhaseOption("cg.cha", "on"); // Ativa CHA para considerar todas as possíveis implementações
+        }
+
+        // Options.v().setPhaseOption("cg.spark", "enable:true");
+        // Options.v().setPhaseOption("cg.cha", "on");
     }
 
     private static void enableCHACallGraph() {

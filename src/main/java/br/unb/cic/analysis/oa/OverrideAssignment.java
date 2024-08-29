@@ -13,6 +13,7 @@ import soot.jimple.toolkits.callgraph.CallGraph;
 import soot.jimple.toolkits.callgraph.Edge;
 import soot.util.Chain;
 
+import java.io.PrintWriter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -97,7 +98,7 @@ public abstract class OverrideAssignment extends SceneTransformer implements Abs
 
         this.traversedMethodsWrapper.add(sootMethod);
 
-        //System.out.println(sootMethod + " - " + this.traversedMethodsWrapper.size());
+        System.out.println(sootMethod + " - " + this.traversedMethodsWrapper.size());
         Body body = this.statementsUtils.getDefinition().retrieveActiveBodySafely(sootMethod);
 
         if (body != null) {
@@ -232,7 +233,9 @@ public abstract class OverrideAssignment extends SceneTransformer implements Abs
         if (!stmtInAbs.getSootMethod().equals(stmtInFlow.getSootMethod())) {
             return false;
         }
-        return valueInAbs.toString().equals(valueInFlow.toString());
+        boolean isSameUseBox = stmtInAbs.getUnit().getUseBoxes().equals(stmtInFlow.getUnit().getUseBoxes());
+        boolean isSameValue = valueInAbs.toString().equals(valueInFlow.toString());
+        return isSameValue && !isSameUseBox;
     }
 
     protected boolean isSameFieldRef(Statement stmtInAbs, Statement stmtInFlow, Value valueInAbs, Value valueInFlow) {
@@ -250,8 +253,12 @@ public abstract class OverrideAssignment extends SceneTransformer implements Abs
         boolean pointToIntersection = stmtInAbs.getPointsTo().hasNonEmptyIntersection(stmtInFlow.getPointsTo());
         boolean typesEqual = abstractFieldRef.getType().equals(flowFieldRef.getType());
         boolean fieldRefsEqual = abstractFieldRef.getFieldRef().equals(flowFieldRef.getFieldRef());
+        boolean baseNameEqual = abstractFieldRef.getBase().toString().equals(flowFieldRef.getBase().toString());
+        boolean nameAndTypeAraEquals = stmtInAbs.getPointsTo().isEmpty() && stmtInFlow.getPointsTo().isEmpty() && baseNameEqual && typesEqual;
+        boolean methodIsConstructor = stmtInAbs.getSootMethod().isConstructor() && stmtInFlow.getSootMethod().isConstructor();
 
-        return (pointToIntersection || typesEqual) && fieldRefsEqual;
+
+        return ((pointToIntersection && !methodIsConstructor) || nameAndTypeAraEquals) && fieldRefsEqual;
     }
 
     protected boolean isSameArrayRef(Statement stmtInAbs, Statement stmtInFlow, Value valueInAbs, Value valueInFlow) {
@@ -334,11 +341,16 @@ public abstract class OverrideAssignment extends SceneTransformer implements Abs
         Iterator<Edge> edges = callGraph.edgesOutOf(currentStatement.getUnit());
 
         List<OverrideAssignmentAbstraction> flowSetList = new ArrayList<>();
+        // Lista para armazenar as arestas do grafo
+        List<String> graphEdges = new ArrayList<>();
+
 
         while (edges.hasNext()) {
             Edge edge = edges.next();
+            SootMethod srcMethod = edge.getSrc().method();
             SootMethod targetMethod = edge.getTgt().method();
 
+            graphEdges.add("\"" + srcMethod.getSignature() + "\" -> \"" + targetMethod.getSignature() + "\";");
             try {
                 OverrideAssignmentAbstraction clonedAbstraction = (OverrideAssignmentAbstraction) inputAbstraction.clone();
                 OverrideAssignmentAbstraction traverseResult = traverse(clonedAbstraction, targetMethod, currentStatement.getType());
@@ -347,7 +359,7 @@ public abstract class OverrideAssignment extends SceneTransformer implements Abs
                 throw new RuntimeException(ex);
             }
         }
-
+        exportCallGraphToDot(graphEdges);
         if (flowSetList.isEmpty()) {
             return inputAbstraction;
         }
@@ -356,6 +368,19 @@ public abstract class OverrideAssignment extends SceneTransformer implements Abs
         flowSetList.forEach(newOverrideAssignmentAbstraction::union);
 
         return newOverrideAssignmentAbstraction;
+    }
+
+    // Método para exportar o grafo para um arquivo DOT
+    private void exportCallGraphToDot(List<String> graphEdges) {
+        try (PrintWriter out = new PrintWriter("callgraph.dot")) {
+            out.println("digraph CallGraph {");
+            for (String edge : graphEdges) {
+                out.println("    " + edge);
+            }
+            out.println("}");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private Value createFieldValueReference(JimpleLocal base, SootFieldRef fieldRef) {
