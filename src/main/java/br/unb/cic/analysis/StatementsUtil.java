@@ -4,6 +4,8 @@ import br.unb.cic.analysis.model.Statement;
 import scala.collection.JavaConverters;
 import soot.SootClass;
 import soot.SootMethod;
+import soot.Value;
+import soot.jimple.ArrayRef;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -95,6 +97,25 @@ public class StatementsUtil {
 
     public AbstractMergeConflictDefinition getDefinition() {
         return this.definition;
+    }
+
+    private List<Statement> getStatmentsByType(Statement.Type type) {
+        if (type.equals(Statement.Type.SOURCE)) {
+            return this.definition.getSourceStatements();
+        } else if (type.equals(Statement.Type.SINK)) {
+            return this.definition.getSinkStatements();
+        }
+        return getAllSourceAndSinkStatements();
+    }
+
+    public Statement getArrayStatementInDefinitionByValue(Statement.Type type, Value value) {
+        Statement statement = null;
+        for (Statement s : getStatmentsByType(type)) {
+            if (s.getUnit().getDefBoxes().get(0).getValue().equals(((ArrayRef) value).getBase())) {
+                return s;
+            }
+        }
+        return statement;
     }
 
 }

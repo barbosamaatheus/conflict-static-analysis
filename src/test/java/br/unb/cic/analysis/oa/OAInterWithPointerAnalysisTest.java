@@ -473,7 +473,7 @@ public class OAInterWithPointerAnalysisTest {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        Assert.assertEquals(79, analysis.getConflicts().size());
+        Assert.assertEquals(80, analysis.getConflicts().size());
     }
 
     @Test
