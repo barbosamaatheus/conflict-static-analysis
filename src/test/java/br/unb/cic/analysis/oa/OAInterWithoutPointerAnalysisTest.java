@@ -121,7 +121,7 @@ public class OAInterWithoutPointerAnalysisTest {
     public void loggingConflict() {
         String sampleClassPath = "br.unb.cic.analysis.samples.ioa.LoggingConflictSample";
         AbstractMergeConflictDefinition definition = DefinitionFactory
-                .definition(sampleClassPath, new int[]{11}, new int[]{14});
+                .definition(sampleClassPath, new int[]{8}, new int[]{11});
         OverrideAssignment analysis = new OverrideAssignmentWithoutPointerAnalysis(definition);
         configureTest(analysis);
         Assert.assertEquals(1, analysis.getConflicts().size());
@@ -502,7 +502,7 @@ public class OAInterWithoutPointerAnalysisTest {
     public void PointsToDifferentMethods() {
         String sampleClassPath = "br.unb.cic.analysis.samples.ioa.PointsToDifferentMethodsSample.Cx";
         AbstractMergeConflictDefinition definition = DefinitionFactory
-                .definition(sampleClassPath, new int[]{11}, new int[]{13});
+                .definition(sampleClassPath, new int[]{12}, new int[]{14});
         OverrideAssignment analysis = new OverrideAssignmentWithoutPointerAnalysis(definition);
         configureTest(analysis);
         Assert.assertEquals(1, analysis.getConflicts().size());
