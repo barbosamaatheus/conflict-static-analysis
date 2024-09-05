@@ -183,9 +183,6 @@ public class Main {
         Option entrypointsOption = Option.builder("entrypoints").argName("entrypoints").hasArg()
                 .desc("entrypoints")
                 .build();
-        Option oaPointerAnalysisOption = Option.builder("oaPointerAnalysis").argName("oaPointerAnalysis").hasArg()
-                .desc("enable pointer analysis in overloading assignment")
-                .build();
 
         options.addOption(classPathOption);
         options.addOption(inputFileOption);
@@ -197,7 +194,6 @@ public class Main {
         options.addOption(depthLimitOption);
         options.addOption(depthMethodsVisitedSVFAOption);
         options.addOption(entrypointsOption);
-        options.addOption(oaPointerAnalysisOption);
     }
 
     private void runAnalysis(String mode, String classpath) {

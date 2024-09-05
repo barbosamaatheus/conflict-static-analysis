@@ -112,7 +112,10 @@ the merge commit hash. See the comment above regarding the -csv parameter.
 
 #### -mode
 
-Analysis mode: dataflow, reachability, svfa or tainted.
+Analysis mode: dataflow, tainted, confluence, confluence-tainted, svfa-interprocedural, svfa-intraprocedural,
+dfp-confluence-interprocedural, dfp-confluence-intraprocedural, reachability, overriding-interprocedural,
+overriding-intraprocedural, ioa-without-pa, oa-without-pa, dfp-intra, dfp-inter, pdg, pdg-e, cd, cd-e or
+pessimistic-dataflow,
 
 #### -repo
 
@@ -151,8 +154,3 @@ This attribute only works in the analysis
 of `OA inter and intra`, `DF inter and intra`, `DFP inter and intra`,` Confluence inter and intra`, `CD` and `PDG`.
 
 E.g.: `[org.example.Main:void main(java.lang.String[])]`
-
-#### -oaPointerAnalysis
-
-Enable pointer analysis in overloading assignment.
-Default value is true
