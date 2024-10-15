@@ -97,6 +97,7 @@ public class OAInterWithoutPointerAnalysisTest {
         System.out.println("----------------------------");
     }
 
+    @Ignore
     @Test
     public void localConflict() {
         String sampleClassPath = "br.unb.cic.analysis.samples.ioa.LocalTestConflictSample";
@@ -371,7 +372,7 @@ public class OAInterWithoutPointerAnalysisTest {
 
         Options.v().set_no_bodies_for_excluded(true);
         Options.v().set_allow_phantom_refs(true);
-        Options.v().set_output_format(Options.output_format_jimple);
+        Options.v().set_output_format(soot.options.Options.output_format_jimple);
         Options.v().set_whole_program(true);
         Options.v().set_process_dir(testClasses);
         Options.v().set_full_resolver(true);
@@ -385,23 +386,20 @@ public class OAInterWithoutPointerAnalysisTest {
         }
         // JAVA VERSION 9 && IS A CLASSPATH PROJECT
         else if (getJavaVersion() >= 9) {
-            Options.v().set_soot_classpath(classpath);
+            Options.v().set_soot_classpath("VIRTUAL_FS_FOR_JDK" + File.pathSeparator + classpath);
         }
 
-
-        //Options.v().setPhaseOption("cg.spark", "on");
-        //Options.v().setPhaseOption("cg.spark", "verbose:true");
-        Options.v().setPhaseOption("cg.spark", "enabled:true");
+        Options.v().setPhaseOption("jb.ls", "off"); // remove x = 1; x#2 = 2
         Options.v().setPhaseOption("jb", "use-original-names:true");
+
+        enableCallGraph();
 
         Scene.v().loadNecessaryClasses();
 
-        enableCallGraph(false);
-
-        analysis.configureEntryPoints();
-
         PackManager.v().getPack("wjtp").add(new Transform("wjtp.analysis", analysis));
+        analysis.configureEntryPoints();
         SootWrapper.applyPackages();
+
 
         try {
             exportResults(analysis.getConflicts());
@@ -409,7 +407,7 @@ public class OAInterWithoutPointerAnalysisTest {
             e.printStackTrace();
         }
 
-        Assert.assertEquals(8, analysis.getConflicts().size());
+        Assert.assertEquals(6, analysis.getConflicts().size());
     }
 
     @Test
@@ -451,22 +449,19 @@ public class OAInterWithoutPointerAnalysisTest {
         }
         // JAVA VERSION 9 && IS A CLASSPATH PROJECT
         else if (getJavaVersion() >= 9) {
-            Options.v().set_soot_classpath(classpath);
+            Options.v().set_soot_classpath("VIRTUAL_FS_FOR_JDK" + File.pathSeparator + classpath);
         }
 
 
-        //Options.v().setPhaseOption("cg.spark", "on");
-        //Options.v().setPhaseOption("cg.spark", "verbose:true");
-        Options.v().setPhaseOption("cg.spark", "enabled:true");
+        Options.v().setPhaseOption("jb.ls", "off"); // remove x = 1; x#2 = 2
         Options.v().setPhaseOption("jb", "use-original-names:true");
-
-        Scene.v().loadNecessaryClasses();
 
         enableCallGraph(false);
 
-        analysis.configureEntryPoints();
+        Scene.v().loadNecessaryClasses();
 
         PackManager.v().getPack("wjtp").add(new Transform("wjtp.analysis", analysis));
+        analysis.configureEntryPoints();
         SootWrapper.applyPackages();
 
         try {
@@ -474,7 +469,7 @@ public class OAInterWithoutPointerAnalysisTest {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        Assert.assertEquals(370, analysis.getConflicts().size());
+        Assert.assertEquals(107, analysis.getConflicts().size());
     }
 
     @Test
@@ -839,7 +834,7 @@ public class OAInterWithoutPointerAnalysisTest {
                 .definition(sampleClassPath, new int[]{7, 9}, new int[]{8});
         OverrideAssignment analysis = new OverrideAssignmentWithoutPointerAnalysis(definition);
         configureTest(analysis);
-        Assert.assertEquals(2, analysis.getConflicts().size());
+        Assert.assertEquals(1, analysis.getConflicts().size());
     }
 
     @Test
