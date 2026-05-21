@@ -3,15 +3,27 @@ package br.unb.cic.analysis.oa;
 import soot.SootClass;
 import soot.SootMethod;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.*;
 
 public class TraversedMethodsWrapper<E> {
 
     private final List<E> traversedMethods;
+    private final Map<String, Integer> allVisitedMethodSignatures = new LinkedHashMap<>();
+    private final Map<String, Set<SootClass>> ancestorCache = new HashMap<>();
     private int visitedMethodsCount = 0;
+
+    private int missedAncestorEvents = 0;
+    private int totalExtraAncestors = 0;
+
+    public int getMissedAncestorEvents() {
+        return missedAncestorEvents;
+    }
+
+    public int getTotalExtraAncestors() {
+        return totalExtraAncestors;
+    }
 
     public TraversedMethodsWrapper() {
         this.traversedMethods = new ArrayList<>();
@@ -32,6 +44,47 @@ public class TraversedMethodsWrapper<E> {
     public void add(E element) {
         this.traversedMethods.add(element);
         this.visitedMethodsCount++;
+        if (element instanceof SootMethod) {
+            String signature = ((SootMethod) element).getSignature();
+            boolean wasAdded = !allVisitedMethodSignatures.containsKey(signature);
+            if (wasAdded) {
+                allVisitedMethodSignatures.put(signature, this.traversedMethods.size());
+            }
+            // Salva no disco a cada 100 novos métodos únicos encontrados
+            if (wasAdded && allVisitedMethodSignatures.size() % 100 == 0) {
+                dumpVisitedMethodsToFile();
+                dumpDiagnosticsToFile();
+            }
+        }
+    }
+
+    private void dumpVisitedMethodsToFile() {
+        try {
+            List<String> lines = new ArrayList<>();
+            for (Map.Entry<String, Integer> entry : allVisitedMethodSignatures.entrySet()) {
+                lines.add(entry.getKey() + " - " + entry.getValue());
+            }
+            Files.write(Paths.get("all_visited_methods.txt"), lines);
+        } catch (Exception e) {
+            // Ignora falhas silenciosamente para não interromper a análise
+        }
+    }
+
+    public void dumpDiagnosticsToFile() {
+        try {
+            List<String> lines = new ArrayList<>();
+            lines.add("[DIAG] Total de metodos analisados: " + visitedMethodsCount);
+            lines.add("[DIAG] Metodos unicos visitados: " + allVisitedMethodSignatures.size());
+            lines.add("[DIAG] Eventos de ancestrais perdidos: " + missedAncestorEvents);
+            lines.add("[DIAG] Total de classes extras perdidas: " + totalExtraAncestors);
+            Files.write(Paths.get("oa_diagnostics.txt"), lines);
+        } catch (Exception e) {
+            // Ignora falhas
+        }
+    }
+
+    public Set<String> getAllVisitedMethodSignatures() {
+        return allVisitedMethodSignatures.keySet();
     }
 
     public int getVisitedMethodsCount() {
@@ -51,6 +104,7 @@ public class TraversedMethodsWrapper<E> {
     }
 
     public boolean hasRelativeBeenTraversed(SootMethod method) {
+        if (traversedMethods.contains(method)) return true;
         return hasTraversedMethodWithCommonSuperclassAndSignature(method);
     }
 
@@ -72,12 +126,21 @@ public class TraversedMethodsWrapper<E> {
     }
 
     private Set<SootClass> getAncestors(SootMethod method) {
+        String cacheKey = method.getDeclaringClass().getName() + "#" + method.getSubSignature();
+        Set<SootClass> cached = ancestorCache.get(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+
         Set<SootClass> ancestors = new HashSet<>();
         SootClass sootClass = method.getDeclaringClass();
         ancestors.add(sootClass);
         getSuperclasses(sootClass, ancestors);
         getInterfaceAncestors(ancestors);
-        return getAncestorsWithMethod(method, ancestors);
+        Set<SootClass> result = getAncestorsWithMethod(method, ancestors);
+
+        ancestorCache.put(cacheKey, result);
+        return result;
     }
 
     private void getSuperclasses(SootClass sootClass, Set<SootClass> ancestors) {
@@ -88,13 +151,24 @@ public class TraversedMethodsWrapper<E> {
     }
 
     private void getInterfaceAncestors(Set<SootClass> ancestors) {
-        Set<SootClass> newAncestors = new HashSet<>();
-        for (SootClass interfaceClass : ancestors) {
-            for (SootClass interfaceAncestor : interfaceClass.getInterfaces()) {
-                newAncestors.add(interfaceAncestor);
+        Set<SootClass> toProcess = new HashSet<>(ancestors);
+        int discoveredCount = 0;
+        while (!toProcess.isEmpty()) {
+            Set<SootClass> newInterfaces = new HashSet<>();
+            for (SootClass cls : toProcess) {
+                for (SootClass iface : cls.getInterfaces()) {
+                    if (ancestors.add(iface)) {
+                        newInterfaces.add(iface);
+                        discoveredCount++;
+                    }
+                }
             }
+            toProcess = newInterfaces;
         }
-        ancestors.addAll(newAncestors);
+        if (discoveredCount > 0) {
+            missedAncestorEvents++;
+            totalExtraAncestors += discoveredCount;
+        }
     }
 
     private Set<SootClass> getAncestorsWithMethod(SootMethod method, Set<SootClass> ancestors) {
@@ -106,7 +180,7 @@ public class TraversedMethodsWrapper<E> {
                     ancestorsWithMethod.add(ancestor);
                 }
             } catch (RuntimeException e) {
-                //ignore
+                // ignore
             }
         }
         return ancestorsWithMethod;
