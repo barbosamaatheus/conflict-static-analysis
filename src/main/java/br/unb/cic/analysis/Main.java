@@ -59,6 +59,7 @@ public class Main {
     private Set<String> targetClasses;
     private List<String> conflicts = new ArrayList<>();
     private List<String> JSONconflicts = new ArrayList<>();
+    private Map<String, ModifiedLinesEntry> modifiedLinesByFile = new LinkedHashMap<>();
     private ReachDefinitionAnalysis analysis;
 
     // Guards against double-export when shutdown hook fires after normal completion
@@ -170,7 +171,7 @@ public class Main {
             System.out.println("Error getting the previous content of the JSON file " + e.getMessage());
         }
 
-        if (!JSONconflicts.isEmpty()) {
+        if (!JSONconflicts.isEmpty() || !modifiedLinesByFile.isEmpty()) {
             org.json.JSONArray scenarioConflicts = new org.json.JSONArray();
             for (String c : JSONconflicts) {
                 try {
@@ -179,7 +180,14 @@ public class Main {
                     System.out.println("error exporting the results " + e.getMessage());
                 }
             }
+
+            org.json.JSONArray scenarioModifiedLines = new org.json.JSONArray();
+            for (ModifiedLinesEntry entry : modifiedLinesByFile.values()) {
+                scenarioModifiedLines.put(entry.toJSON());
+            }
+
             org.json.JSONObject scenario = new org.json.JSONObject();
+            scenario.put("modifiedLines", scenarioModifiedLines);
             scenario.put("conflicts", scenarioConflicts);
             allScenarios.put(scenario);
         }
@@ -629,6 +637,7 @@ public class Main {
         List<ClassChangeDefinition> changes = reader.read();
         Map<String, List<Integer>> sourceDefs = new HashMap<>();
         Map<String, List<Integer>> sinkDefs = new HashMap<>();
+        modifiedLinesByFile = new LinkedHashMap<>();
         targetClasses = new HashSet<>();
         for (ClassChangeDefinition change : changes) {
             if (change.getType().equals(Statement.Type.SOURCE)) {
@@ -636,6 +645,7 @@ public class Main {
             } else {
                 addChange(sinkDefs, change);
             }
+            addModifiedLine(change.getClassName(), change.getType(), change.getLineNumber());
             targetClasses.add(change.getClassName());
         }
         definition = new AbstractMergeConflictDefinition() {
@@ -666,13 +676,16 @@ public class Main {
         ArrayList<Entry<String, Integer>> sinkClasses = module.getSinkModifiedClasses();
         Map<String, List<Integer>> sourceDefs = new HashMap<>();
         Map<String, List<Integer>> sinkDefs = new HashMap<>();
+        modifiedLinesByFile = new LinkedHashMap<>();
         targetClasses = new HashSet<>();
         for (Entry<String, Integer> change : sourceClasses) {
             addChangeFromDiffAnalysis(sourceDefs, change);
+            addModifiedLine(change.getKey(), true, change.getValue());
             targetClasses.add(change.getKey());
         }
         for (Entry<String, Integer> change : sinkClasses) {
             addChangeFromDiffAnalysis(sinkDefs, change);
+            addModifiedLine(change.getKey(), false, change.getValue());
             targetClasses.add(change.getKey());
         }
 
@@ -696,6 +709,100 @@ public class Main {
             List<Integer> lines = new ArrayList<>();
             lines.add(change.getValue());
             map.put(change.getKey(), lines);
+        }
+    }
+
+    private void addModifiedLine(String fileName, Statement.Type type, Integer lineNumber) {
+        if (fileName == null || lineNumber == null) {
+            return;
+        }
+
+        ModifiedLinesEntry entry = modifiedLinesByFile.computeIfAbsent(normalizeFileName(fileName), ModifiedLinesEntry::new);
+        if (type == Statement.Type.SOURCE) {
+            entry.leftAdded.add(lineNumber);
+        } else {
+            entry.rightAdded.add(lineNumber);
+        }
+    }
+
+    private void addModifiedLine(String fileName, boolean sourceBranch, Integer lineNumber) {
+        if (fileName == null || lineNumber == null) {
+            return;
+        }
+
+        ModifiedLinesEntry entry = modifiedLinesByFile.computeIfAbsent(normalizeFileName(fileName), ModifiedLinesEntry::new);
+        if (sourceBranch) {
+            entry.leftAdded.add(lineNumber);
+        } else {
+            entry.rightAdded.add(lineNumber);
+        }
+    }
+
+    private String normalizeFileName(String value) {
+        String trimmed = value.trim();
+
+        if (isJavaFilePath(trimmed)) {
+            return new File(trimmed).getName();
+        }
+
+        if (isJavaClassName(trimmed)) {
+            return trimmed.substring(trimmed.lastIndexOf('.') + 1);
+        }
+
+        return trimmed;
+    }
+
+    private boolean isJavaFilePath(String value) {
+        if (value == null) {
+            return false;
+        }
+
+        String trimmed = value.trim();
+        return !trimmed.isEmpty()
+                && (trimmed.endsWith(".java")
+                || trimmed.contains("/")
+                || trimmed.contains("\\"));
+    }
+
+    private boolean isJavaClassName(String value) {
+        if (value == null) {
+            return false;
+        }
+
+        String trimmed = value.trim();
+        return !trimmed.isEmpty()
+                && trimmed.matches("[A-Za-z_$][\\w$]*(\\.[A-Za-z_$][\\w$]*)+")
+                && !trimmed.contains("/")
+                && !trimmed.contains("\\");
+    }
+
+    private static final class ModifiedLinesEntry {
+        private final String file;
+        private final Set<Integer> leftAdded = new TreeSet<>();
+        private final Set<Integer> leftRemoved = new TreeSet<>();
+        private final Set<Integer> rightAdded = new TreeSet<>();
+        private final Set<Integer> rightRemoved = new TreeSet<>();
+
+        private ModifiedLinesEntry(String file) {
+            this.file = file;
+        }
+
+        private org.json.JSONObject toJSON() {
+            org.json.JSONObject json = new org.json.JSONObject();
+            json.put("file", file);
+            json.put("leftAdded", toJSONArray(leftAdded));
+            json.put("leftRemoved", toJSONArray(leftRemoved));
+            json.put("rightAdded", toJSONArray(rightAdded));
+            json.put("rightRemoved", toJSONArray(rightRemoved));
+            return json;
+        }
+
+        private org.json.JSONArray toJSONArray(Set<Integer> values) {
+            org.json.JSONArray arr = new org.json.JSONArray();
+            for (Integer value : values) {
+                arr.put(value);
+            }
+            return arr;
         }
     }
 
