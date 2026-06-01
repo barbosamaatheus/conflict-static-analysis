@@ -437,13 +437,51 @@ def _process_json(json_path):
     output_dir = os.path.dirname(os.path.abspath(json_path)) or "."
     processor = ConflictProcessor(output_dir)
 
+    def _default_scenario_jar():
+        return os.path.splitext(os.path.basename(json_path))[0]
+
+    def _normalize_conflict_entry(entry, scenario_jar):
+        normalized_entry = dict(entry)
+        normalized_entry.setdefault("ScenarioJAR", scenario_jar)
+        return normalized_entry
+
     with open(json_path) as f:
         data = json.load(f)
 
-    if data and isinstance(data, list):
+    if isinstance(data, dict):
+        scenario_jar = _default_scenario_jar()
+        if isinstance(data.get("conflicts"), list):
+            processor.process_conflicts(
+                [
+                    _normalize_conflict_entry(entry, scenario_jar)
+                    for entry in data["conflicts"]
+                    if isinstance(entry, dict)
+                ],
+                start_idx=0,
+            )
+        else:
+            raise Exception("Invalid conflict data format")
+    elif isinstance(data, list):
         for idx, entry in enumerate(data):
-            if isinstance(entry, dict) and "conflicts" in entry:
-                processor.process_conflicts(entry.get("conflicts", []), start_idx=idx)
+            if not isinstance(entry, dict):
+                raise Exception("Invalid conflict data format")
+
+            scenario_jar = entry.get("ScenarioJAR") or _default_scenario_jar()
+
+            if isinstance(entry.get("conflicts"), list):
+                processor.process_conflicts(
+                    [
+                        _normalize_conflict_entry(conflict, scenario_jar)
+                        for conflict in entry["conflicts"]
+                        if isinstance(conflict, dict)
+                    ],
+                    start_idx=idx,
+                )
+            elif "body" in entry and "interference" in entry["body"]:
+                processor.process_conflicts(
+                    [_normalize_conflict_entry(entry, scenario_jar)],
+                    start_idx=idx,
+                )
             else:
                 raise Exception("Invalid conflict data format")
 

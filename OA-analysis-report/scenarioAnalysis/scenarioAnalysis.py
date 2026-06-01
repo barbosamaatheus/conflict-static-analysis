@@ -31,6 +31,10 @@ class ScenarioAnalyzer:
         self.output_dir = output_dir
         conflict_df = pd.read_csv(os.path.join(output_dir, CONFLICT_STATS_CSV))
         scenarioJAR_df = pd.read_csv(os.path.join(output_dir, SCENARIO_STATS_CSV))
+        if conflict_df.empty:
+            print("\nScenario Analysis Results:")
+            print("No scenarios were found in the generated conflict statistics.")
+            return
 
         self._print_scenario_stats(conflict_df, scenarioJAR_df, title=None)
         

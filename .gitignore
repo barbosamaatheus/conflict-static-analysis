@@ -15,3 +15,5 @@ conflicts_log.txt
 .DS_Store
 *.pyc
 /OA-analysis-report/venv
+/OA-analysis-report/.venv
+/OA-analysis-report/analysisReport
