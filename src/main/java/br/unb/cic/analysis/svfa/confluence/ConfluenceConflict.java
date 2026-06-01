@@ -53,7 +53,7 @@ public class ConfluenceConflict {
                         "\t" + "\"type\": \"%s\"," + "\n" +
                         "\t" + "\"label\": \"%s\"," + "\n" +
                         "\t" + "\"body\": {" + "\n" +
-                        "\t\t" + "\"description\": \"%s\"," + "\n" +
+                        "\t\t" + "\"description\": \"\"," + "\n" +
                         "\t\t" + "\"interference\": [" + "\n" +
                         "\t\t\t" + "{" + "\n" +
                         "\t\t\t\t" + "\"type\": \"source1\"," + "\n" +
@@ -94,7 +94,7 @@ public class ConfluenceConflict {
                         "\t\t" + "]" + "\n" +
                         "\t" + "}" + "\n" +
                         "}",
-                type, label, this.toString().replaceAll("\n", " "),
+                type, label,
                 sinkNode.value().sootUnit().toString().replaceAll("\"", "'"), sinkNode.value().className(), sinkNode.value().method(), sinkNode.value().line(),
                 sourceNode.value().sootUnit().toString().replaceAll("\"", "'"), sourceNode.value().className(), sourceNode.value().method(), sourceNode.value().line(),
                 baseNode.value().sootUnit().toString().replaceAll("\"", "'"), baseNode.value().className(), baseNode.value().method(), baseNode.value().line()
