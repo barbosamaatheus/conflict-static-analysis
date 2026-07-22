@@ -1,15 +1,14 @@
 package br.unb.cic.analysis.model;
 
 import br.unb.cic.analysis.CallGraphAlgorithm;
-import br.unb.cic.analysis.Main;
 import soot.SootMethod;
 
 import java.util.List;
 import java.util.Map;
 
-public class OAAnalysisRecord {
+public class AnalysisRecord {
 
-    private static OAAnalysisRecord instance;
+    private static AnalysisRecord instance;
 
     private List<SootMethod> callGraphEntryPoint;
     private List<SootMethod> analysisEntryPoint;
@@ -17,18 +16,22 @@ public class OAAnalysisRecord {
     private int callGraphEdgeCount;
     private int depthLimit;
     private int visitedMethodsCount;
-    private Main.AnalysisType analysisType;
     private Map<String, Long> callGraphBuildTimeMs;
     private long analysisExecutionTimeMs;
+    private long usedMemoryMb;
 
-    private OAAnalysisRecord() {
+    private AnalysisRecord() {
     }
 
-    public static OAAnalysisRecord getInstance() {
+    public static AnalysisRecord getInstance() {
         if (instance == null) {
-            throw new IllegalStateException("OAAnalysisRecord ainda não foi inicializado. Use o Builder primeiro.");
+            throw new IllegalStateException("AnalysisRecord ainda não foi inicializado. Use o Builder primeiro.");
         }
         return instance;
+    }
+
+    public static void clearInstance() {
+        instance = null;
     }
 
     public static class Builder {
@@ -38,7 +41,6 @@ public class OAAnalysisRecord {
         private int callGraphEdgeCount;
         private int depthLimit;
         private int visitedMethodsCount;
-        private Main.AnalysisType analysisType;
         private Map<String, Long> callGraphBuildTimeMs;
         private long analysisExecutionTimeMs;
 
@@ -72,11 +74,6 @@ public class OAAnalysisRecord {
             return this;
         }
 
-        public Builder analysisType(Main.AnalysisType value) {
-            this.analysisType = value;
-            return this;
-        }
-
         public Builder callGraphBuildTimeMs(Map<String, Long> value) {
             this.callGraphBuildTimeMs = value;
             return this;
@@ -87,18 +84,20 @@ public class OAAnalysisRecord {
             return this;
         }
 
-        public OAAnalysisRecord build() {
+        public AnalysisRecord build() {
             if (instance == null) {
-                instance = new OAAnalysisRecord();
+                instance = new AnalysisRecord();
                 instance.callGraphEntryPoint = this.callGraphEntryPoint;
                 instance.analysisEntryPoint = this.analysisEntryPoint;
                 instance.callGraphAlgorithm = this.callGraphAlgorithm;
                 instance.callGraphEdgeCount = this.callGraphEdgeCount;
                 instance.depthLimit = this.depthLimit;
                 instance.visitedMethodsCount = this.visitedMethodsCount;
-                instance.analysisType = this.analysisType;
                 instance.callGraphBuildTimeMs = this.callGraphBuildTimeMs;
                 instance.analysisExecutionTimeMs = this.analysisExecutionTimeMs;
+
+                Runtime runtime = Runtime.getRuntime();
+                instance.usedMemoryMb = (runtime.totalMemory() - runtime.freeMemory()) / (1024 * 1024);
             }
             return instance;
         }
@@ -128,10 +127,6 @@ public class OAAnalysisRecord {
         return visitedMethodsCount;
     }
 
-    public Main.AnalysisType getAnalysisType() {
-        return analysisType;
-    }
-
     public Map<String, Long> getCallGraphBuildTimeMs() {
         return callGraphBuildTimeMs;
     }
@@ -142,5 +137,25 @@ public class OAAnalysisRecord {
 
     public void setAnalysisExecutionTimeMs(long time) {
         this.analysisExecutionTimeMs = time;
+    }
+
+    public long getUsedMemoryMb() {
+        return usedMemoryMb;
+    }
+
+    public void setCallGraphBuildTimeMs(Map<String, Long> callGraphBuildTimeMs) {
+        this.callGraphBuildTimeMs = callGraphBuildTimeMs;
+    }
+
+    public void setCallGraphAlgorithm(CallGraphAlgorithm callGraphAlgorithm) {
+        this.callGraphAlgorithm = callGraphAlgorithm;
+    }
+
+    public void setCallGraphEdgeCount(int callGraphEdgeCount) {
+        this.callGraphEdgeCount = callGraphEdgeCount;
+    }
+
+    public void setUsedMemoryMb(long usedMemoryMb) {
+        this.usedMemoryMb = usedMemoryMb;
     }
 }

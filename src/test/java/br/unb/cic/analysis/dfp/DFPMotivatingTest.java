@@ -5,36 +5,38 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
-public class DFPAnalysisBaseTest {
+public class DFPMotivatingTest {
 
-    private DFPAnalysisSemanticConflicts analysis;
-    public static String class_name = "br.unb.cic.analysis.samples.DFPBaseSample";
+    private DFPInterProcedural analysis;
+    AbstractMergeConflictDefinition definition;
+    public static String class_name = "br.unb.cic.analysis.samples.DFPMotivating";
 
     @Before
     public void configure() {
-        AbstractMergeConflictDefinition definition = new AbstractMergeConflictDefinition() {
+        definition = new AbstractMergeConflictDefinition(true) {
             @Override
             protected Map<String, List<Integer>> sourceDefinitions() {
                 Map<String, List<Integer>> res = new HashMap<>();
                 List<Integer> lines = new ArrayList<>();
-                lines.add(11);
-                res.put(class_name, lines);
+                addConfiguration(res, class_name, 18);
                 return res;
             }
 
             @Override
             protected Map<String, List<Integer>> sinkDefinitions() {
                 Map<String, List<Integer>> res = new HashMap<>();
-                List<Integer> lines = new ArrayList<>();
-                lines.add(13);
-                res.put(class_name, lines);
+                addConfiguration(res, class_name, 21, 22, 23, 24);
                 return res;
             }
+
+            private void addConfiguration(Map<String, List<Integer>> map, String className, Integer... lines) {
+                List<Integer> lineList = new ArrayList<>();
+                Collections.addAll(lineList, lines);
+                map.put(className, lineList);
+            }
+
         };
 
         String cp = "target/test-classes";

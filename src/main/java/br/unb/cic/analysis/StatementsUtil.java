@@ -65,7 +65,7 @@ public class StatementsUtil {
      *
      * @return a list of all source and sink statements.
      */
-    private List<Statement> getAllSourceAndSinkStatements() {
+    public List<Statement> getAllSourceAndSinkStatements() {
         List<Statement> allStatements = new ArrayList<>();
         allStatements.addAll(this.definition.getSourceStatements());
         allStatements.addAll(this.definition.getSinkStatements());
@@ -133,7 +133,6 @@ public class StatementsUtil {
             //new HasMainMethodCsvExporter().export(true, "HasMainMethod.csv");
         }
         //mainMethods.addAll(new ArrayList<>(JavaConverters.seqAsJavaList(getEntryPoints())));
-
 
         return JavaConverters.asScalaBuffer(mainMethods).toList();
     }
